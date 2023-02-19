@@ -1,3 +1,4 @@
+const exphbs = require('express-handlebars');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -5,14 +6,21 @@ const path = require('path');
 const app = express();
 const port = 3000;
 
+const hbs = exphbs.create({
+  extname: '.handlebars',
+  defaultLayout: 'main',
+  layoutsDir: path.join(__dirname, 'views', 'layouts'),
+  partialsDir: path.join(__dirname, 'views', 'partials')
+});
+
+app.engine('handlebars', hbs.engine);
+app.set('view engine', 'handlebars');
+app.set('views', path.join(__dirname, 'views'));
+
 // products endpoint
 const productsRouter = express.Router();
 const productsPath = path.join(__dirname, 'products.json');
-let products = [];
-fs.readFile(productsPath, (err, data) => {
-  if (err) throw err;
-  products = JSON.parse(data);
-});
+let products = JSON.parse(fs.readFileSync(productsPath));
 
 productsRouter
   .route('/')
@@ -25,16 +33,10 @@ app.use('/products', productsRouter);
 // carts endpoint
 const cartsRouter = express.Router();
 const cartsPath = path.join(__dirname, 'carts.json');
-let carts = [];
-fs.readFile(cartsPath, (err, data) => {
-  if (err) throw err;
-  carts = JSON.parse(data);
-});
+let carts = JSON.parse(fs.readFileSync(cartsPath));
 
 const writeToFile = (filePath, data) => {
-  fs.writeFile(filePath, JSON.stringify(data), err => {
-    if (err) throw err;
-  });
+  fs.writeFileSync(filePath, JSON.stringify(data));
 };
 
 cartsRouter
@@ -66,6 +68,15 @@ cartsRouter
       res.status(400).send({ error: 'Cart or product not found' });
     }
   });
+
+const viewsRouter = express.Router();
+viewsRouter.route('/').get((req, res) => {
+  res.render('layouts/home', { products });
+});
+viewsRouter.route('/realtimeproducts').get((req, res) => {
+  res.render('layouts/realTimeProducts', { products });
+});
+app.use('/', viewsRouter);
 
 app.use('/carts', cartsRouter);
 
